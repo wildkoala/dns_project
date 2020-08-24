@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug 20 00:06:06 2020
+Completed on Mon Aug 24 00:09:16 2020
 
-@author: dmbes
+@author: dmbes & wildkoala
 """
-
-
-# pickle vectorizer and model itself.
-
 
 #%%
 import pandas as pd
@@ -55,13 +51,7 @@ clean7 = clean6[~clean6['QNAME_DNS'].str.contains("akamai", na=False)]
 # Get the number of times each domain name was queried.
 queries_per_fqdn = clean7.groupby('QNAME_DNS').count()
 
-
-
-
-# Get the number of times each domain was hit, sort them most to least queries
-sorted_q_by_fqdn = queries_per_fqdn.sort_values("Id", ascending=False)
-reduced = sorted_q_by_fqdn.reset_index()[['QNAME_DNS', 'Id']].copy()
-#reduced.to_csv('remaining_fqdns.csv')
+reduced = queries_per_fqdn.reset_index()[['QNAME_DNS', 'Id']].copy()
 
 #%%
 # Vectorize
@@ -75,14 +65,12 @@ X = vectorizer.fit_transform(sn)
 
 domains = queries_per_fqdn.reset_index()['QNAME_DNS'].tolist()
 X2 = vectorizer.transform(domains)
-#print(X2.shape)
+
 
 #%%
 # Train Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, 
                                                     test_size=0.33, random_state=42)
-
-
 
 
 #%%
@@ -98,10 +86,7 @@ X2 = tfidf.transform(X2)
 clf = LogisticRegression(random_state=0).fit(X_train, y_train)
 
 #%%
-'''
-X_test = tfidf.transform(X_test)
-pred = clf.predict(X_test)
-'''
+
 X_test = tfidf.transform(X_test)
 pred = clf.predict(X2)
 pred2 = clf.predict_proba(X2)
@@ -110,14 +95,13 @@ pred2 = clf.predict_proba(X2)
 # put into panads dataframe, export to csv file.
 df = pd.DataFrame(data=pred)
 df2 = pd.DataFrame(data=pred2)
-pd.set_option("display.max_rows", None, "display.max_columns", None)
-#print(df[0])
+
 
 reduced['PREDICTION'] = df[0]
 reduced['PROBABILITY'] = df2[0]
 mapping = {reduced.columns[1]:'NUM_QUERIES'}
 reduced = reduced.rename(columns=mapping)
 reduced['HIGHEST THREAT'] = reduced['QNAME_DNS'].loc[(reduced['PROBABILITY'] >= 0.95)]
+reduced = reduced.sort_values("PROBABILITY", ascending=False)
 reduced.to_csv('output.csv')
-# get all the string with random probability > 95% (or whatever, play with threshold)
 
